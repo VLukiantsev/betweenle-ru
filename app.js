@@ -19,6 +19,8 @@ const closeHelpBtn = document.getElementById('close-help-btn');
 const closeStatsBtn = document.getElementById('close-stats-btn');
 const playAgainBtn = document.getElementById('play-again-btn');
 const toastEl = document.getElementById('toast-message');
+const gaugeContainerEl = document.getElementById('gauge-container');
+const gaugeMarkerEl = document.getElementById('gauge-marker');
 
 // Modal Elements for Stats
 const statsPlayedEl = document.getElementById('stat-played');
@@ -185,7 +187,26 @@ function updateUI() {
 
   // Update Range Counter
   const count = getWordsLeftCount();
-  rangeCounterEl.textContent = `Осталось слов: ${count.toLocaleString('ru-RU')}`;
+  rangeCounterEl.textContent = `Слов в диапазоне: ${count.toLocaleString('ru-RU')}`;
+
+  // Update Alphabetical Gauge Bar (except before first try)
+  if (guessHistory.length > 0) {
+    gaugeContainerEl.style.display = 'block';
+    const idxTop = getVirtualIndex(topWord);
+    const idxBottom = getVirtualIndex(bottomWord);
+    const idxSecret = getVirtualIndex(secretWord);
+    
+    let percent = 50;
+    const denominator = idxBottom - idxTop;
+    if (denominator > 0) {
+      percent = ((idxSecret - idxTop) / denominator) * 100;
+    }
+    // Cap to bounds safely for visual polish
+    percent = Math.max(3, Math.min(97, percent));
+    gaugeMarkerEl.style.left = `${percent}%`;
+  } else {
+    gaugeContainerEl.style.display = 'none';
+  }
 
   // Update Proximity Indicator (Orange Dots)
   updateProximityDots();
@@ -195,6 +216,9 @@ function updateUI() {
 
   // Update Typing Grid
   updateInputGrid();
+
+  // Update Interactive Keyboard enabled/disabled keys
+  updateKeyboardState();
 }
 
 function updateProximityDots() {
@@ -257,7 +281,7 @@ function renderHistory() {
         <span class="history-badge ${badgeClass}">${badgeLabel}</span>
       </div>
       <div class="history-right">
-        <span class="history-range-desc">Слов осталось</span>
+        <span class="history-range-desc">В диапазоне</span>
         <span class="history-range-num">${item.wordsLeft.toLocaleString('ru-RU')}</span>
       </div>
     `;
@@ -279,12 +303,79 @@ function updateInputGrid() {
   }
 }
 
+// Real-time letter constraints helper
+function getValidNextLetters(prefix) {
+  const validLetters = new Set();
+  
+  if (prefix.length >= 5) {
+    return validLetters;
+  }
+  
+  for (const word of WORDS) {
+    // 1. Must be strictly between current boundaries
+    if (word.localeCompare(topWord, 'ru') <= 0 || word.localeCompare(bottomWord, 'ru') >= 0) {
+      continue;
+    }
+    
+    // 2. Must match typed prefix
+    if (!word.startsWith(prefix)) {
+      continue;
+    }
+    
+    // 3. Extract the next character
+    const nextChar = word[prefix.length];
+    if (nextChar) {
+      validLetters.add(nextChar);
+    }
+  }
+  
+  return validLetters;
+}
+
+// Enable/Disable keys on interactive virtual keyboard
+function updateKeyboardState() {
+  const allKeys = document.querySelectorAll('#keyboard button.key');
+  
+  if (isGameOver) {
+    allKeys.forEach(btn => {
+      const keyVal = btn.getAttribute('data-key');
+      if (keyVal !== 'enter' && keyVal !== 'backspace') {
+        btn.classList.add('disabled');
+      }
+    });
+    return;
+  }
+
+  const validLetters = getValidNextLetters(currentGuess);
+  
+  allKeys.forEach(btn => {
+    const keyVal = btn.getAttribute('data-key');
+    if (keyVal !== 'enter' && keyVal !== 'backspace') {
+      if (validLetters.has(keyVal)) {
+        btn.classList.remove('disabled');
+      } else {
+        btn.classList.add('disabled');
+      }
+    }
+  });
+}
+
 // --- GAMEPLAY GUESS VALIDATION & SUBMISSION ---
 function handleKeyInput(char) {
   if (isGameOver) return;
   if (currentGuess.length < 5) {
-    currentGuess += char.toLowerCase();
+    const validLetters = getValidNextLetters(currentGuess);
+    const lowerChar = char.toLowerCase();
+    
+    // Validate if the character is allowed in alphabetical range search space
+    if (!validLetters.has(lowerChar)) {
+      shakeGrid();
+      return;
+    }
+    
+    currentGuess += lowerChar;
     updateInputGrid();
+    updateKeyboardState();
   }
 }
 
@@ -293,6 +384,7 @@ function handleBackspace() {
   if (currentGuess.length > 0) {
     currentGuess = currentGuess.slice(0, -1);
     updateInputGrid();
+    updateKeyboardState();
   }
 }
 

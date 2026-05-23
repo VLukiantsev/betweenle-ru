@@ -1,4 +1,4 @@
-const CACHE_NAME = 'betweenle-ru-v1';
+const CACHE_NAME = 'betweenle-ru-v2';
 const ASSETS = [
   './',
   'index.html',
