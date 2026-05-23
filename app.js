@@ -21,6 +21,7 @@ const playAgainBtn = document.getElementById('play-again-btn');
 const toastEl = document.getElementById('toast-message');
 const gaugeContainerEl = document.getElementById('gauge-container');
 const gaugeMarkerEl = document.getElementById('gauge-marker');
+const giveUpBtn = document.getElementById('give-up-btn');
 
 // Modal Elements for Stats
 const statsPlayedEl = document.getElementById('stat-played');
@@ -219,6 +220,13 @@ function updateUI() {
 
   // Update Interactive Keyboard enabled/disabled keys
   updateKeyboardState();
+
+  // Show/hide give-up button
+  if (isGameOver) {
+    giveUpBtn.classList.add('hidden');
+  } else {
+    giveUpBtn.classList.remove('hidden');
+  }
 }
 
 function updateProximityDots() {
@@ -508,6 +516,21 @@ function updateStats(won) {
   }
 }
 
+// --- GIVE UP HANDLER ---
+function handleGiveUp() {
+  if (isGameOver) return;
+
+  isGameOver = true;
+  updateStats(false);
+  saveStats();
+  saveGameState();
+  updateUI();
+
+  setTimeout(() => {
+    showStatsPopup('Вы сдались 🏳️');
+  }, 300);
+}
+
 // --- DYNAMIC ALERTS / TOASTS ---
 function showToast(message, duration = 2500) {
   toastEl.textContent = message;
@@ -597,6 +620,9 @@ function setupEventListeners() {
     startNewGame();
     updateUI();
   });
+
+  // Give Up Btn
+  giveUpBtn.addEventListener('click', handleGiveUp);
 
   // Click on Title logo -> secret debugging easter egg
   logoEl.addEventListener('click', () => {
