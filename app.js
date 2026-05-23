@@ -303,29 +303,43 @@ function updateInputGrid() {
   }
 }
 
-// Real-time letter constraints helper
+// Russian alphabet in correct order for range checking
+const RUSSIAN_ALPHABET = 'абвгдеёжзийклмнопрстуфхцчшщъыьэюя';
+
+// Check if appending a letter to the current prefix could still produce
+// a 5-letter string that falls strictly between topWord and bottomWord.
+// This is purely alphabetical — no dictionary lookup needed.
 function getValidNextLetters(prefix) {
   const validLetters = new Set();
   
   if (prefix.length >= 5) {
     return validLetters;
   }
-  
-  for (const word of WORDS) {
-    // 1. Must be strictly between current boundaries
-    if (word.localeCompare(topWord, 'ru') <= 0 || word.localeCompare(bottomWord, 'ru') >= 0) {
-      continue;
-    }
+
+  const pos = prefix.length; // 0-based position we are filling
+
+  for (const letter of RUSSIAN_ALPHABET) {
+    const candidate = prefix + letter;
     
-    // 2. Must match typed prefix
-    if (!word.startsWith(prefix)) {
-      continue;
-    }
+    // Pad candidate to 5 chars to check boundary feasibility:
+    // - To beat topWord, pad with the HIGHEST possible letters (я)
+    // - To stay below bottomWord, pad with the LOWEST possible letters (а)
+    const remaining = 5 - candidate.length;
     
-    // 3. Extract the next character
-    const nextChar = word[prefix.length];
-    if (nextChar) {
-      validLetters.add(nextChar);
+    // Best-case highest: candidate + "яяяя..." — must be > topWord
+    const highest = candidate + 'я'.repeat(remaining);
+    // Best-case lowest: candidate + "ааааа..." — must be < bottomWord
+    const lowest = candidate + 'а'.repeat(remaining);
+    
+    // The candidate letter is valid if there EXISTS some 5-letter completion
+    // that is strictly between topWord and bottomWord.
+    // That means: the highest possible completion must be > topWord
+    //       AND   the lowest possible completion must be < bottomWord
+    const aboveTop = highest.localeCompare(topWord, 'ru') > 0;
+    const belowBottom = lowest.localeCompare(bottomWord, 'ru') < 0;
+    
+    if (aboveTop && belowBottom) {
+      validLetters.add(letter);
     }
   }
   
