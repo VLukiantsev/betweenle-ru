@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Бетвинли — Угадай слово в диапазоне</title>
+  
+  <!-- SEO & Social Meta Tags -->
+  <meta name="description" content="Увлекательная словесная игра на русском языке. Угадайте секретное 5-буквенное слово, сужая алфавитные границы от ААААА до ЯЯЯЯЯ!">
+  <meta name="keywords" content="betweenle, бетвинли, игра в слова, wordle, вордли, лингвистические игры, головоломка">
+  <meta property="og:title" content="Бетвинли — Игра в слова на русском">
+  <meta property="og:description" content="Сужайте алфавитные рамки, чтобы найти секретное слово. Сыграйте прямо сейчас в браузере или оффлайн!">
+  <meta property="og:type" content="website">
+  
+  <!-- PWA & Mobile Meta Tags -->
+  <meta name="theme-color" content="#0b0f19">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Бетвинли">
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  
+  <!-- Styling -->
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- Canvas for Victory Confetti -->
+  <canvas id="confetti-canvas"></canvas>
+
+  <div class="app-container">
+    <!-- Header -->
+    <header>
+      <button class="icon-btn" id="help-btn" aria-label="Как играть">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+      </button>
+      
+      <div class="title-container">
+        <h1 id="game-logo">Бетвинли</h1>
+        <div class="subtitle">на русском</div>
+      </div>
+      
+      <button class="icon-btn" id="stats-btn" aria-label="Статистика">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+        </svg>
+      </button>
+    </header>
+
+    <!-- Error Toast Notification -->
+    <div class="toast" id="toast-message">Недостаточно букв!</div>
+
+    <!-- Range Boundaries Board -->
+    <div class="boundaries-panel">
+      <!-- Top Boundary -->
+      <div class="boundary-row" id="top-boundary-row">
+        <div class="boundary-word-container">
+          <span class="boundary-word" id="top-word">ААААА</span>
+          <div class="orange-dot" id="top-dot" title="Секретное слово ближе к этой границе"></div>
+        </div>
+        <span class="boundary-label">Верхняя</span>
+      </div>
+
+      <!-- Range Stats Divider -->
+      <div class="range-divider">
+        <span class="range-counter" id="range-counter">Загрузка...</span>
+      </div>
+
+      <!-- Bottom Boundary -->
+      <div class="boundary-row" id="bottom-boundary-row">
+        <span class="boundary-label">Нижняя</span>
+        <div class="boundary-word-container">
+          <div class="orange-dot" id="bottom-dot" title="Секретное слово ближе к этой границе"></div>
+          <span class="boundary-word" id="bottom-word">ЯЯЯЯЯ</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Guess History -->
+    <div class="history-container" id="history-container">
+      <!-- JS will dynamically populate guesses here -->
+      <div class="history-placeholder">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" />
+        </svg>
+        <span>Сделайте первую попытку, чтобы сузить диапазон!</span>
+      </div>
+    </div>
+
+    <!-- Guess Input Panel -->
+    <div class="input-panel">
+      <div class="letter-grid" id="letter-grid">
+        <div class="letter-box" id="box-0"></div>
+        <div class="letter-box" id="box-1"></div>
+        <div class="letter-box" id="box-2"></div>
+        <div class="letter-box" id="box-3"></div>
+        <div class="letter-box" id="box-4"></div>
+      </div>
+    </div>
+
+    <!-- Custom Cyrillic Virtual Keyboard -->
+    <div class="keyboard" id="keyboard">
+      <!-- Row 1 -->
+      <div class="keyboard-row">
+        <button class="key" data-key="й">Й</button>
+        <button class="key" data-key="ц">Ц</button>
+        <button class="key" data-key="у">У</button>
+        <button class="key" data-key="к">К</button>
+        <button class="key" data-key="е">Е</button>
+        <button class="key" data-key="н">Н</button>
+        <button class="key" data-key="г">Г</button>
+        <button class="key" data-key="ш">Ш</button>
+        <button class="key" data-key="щ">Щ</button>
+        <button class="key" data-key="з">З</button>
+        <button class="key" data-key="х">Х</button>
+        <button class="key" data-key="ъ">Ъ</button>
+      </div>
+      <!-- Row 2 -->
+      <div class="keyboard-row">
+        <button class="key" data-key="ф">Ф</button>
+        <button class="key" data-key="ы">Ы</button>
+        <button class="key" data-key="в">В</button>
+        <button class="key" data-key="а">А</button>
+        <button class="key" data-key="п">П</button>
+        <button class="key" data-key="р">Р</button>
+        <button class="key" data-key="о">О</button>
+        <button class="key" data-key="л">Л</button>
+        <button class="key" data-key="д">Д</button>
+        <button class="key" data-key="ж">Ж</button>
+        <button class="key" data-key="э">Э</button>
+      </div>
+      <!-- Row 3 -->
+      <div class="keyboard-row">
+        <button class="key wide" data-key="enter">Ввод</button>
+        <button class="key" data-key="я">Я</button>
+        <button class="key" data-key="ч">Ч</button>
+        <button class="key" data-key="с">С</button>
+        <button class="key" data-key="м">М</button>
+        <button class="key" data-key="и">И</button>
+        <button class="key" data-key="т">Т</button>
+        <button class="key" data-key="ь">Ь</button>
+        <button class="key" data-key="б">Б</button>
+        <button class="key" data-key="ю">Ю</button>
+        <button class="key wide" data-key="backspace">⌫</button>
+      </div>
+    </div>
+
+    <!-- Compliant Licensing Footer -->
+    <footer>
+      <span>Словарь: <a href="https://github.com/Badestrand/russian-dictionary" target="_blank" rel="noopener noreferrer">Badestrand</a> (CC BY-SA 4.0)</span>
+    </footer>
+  </div>
+
+  <!-- HELP / HOW TO PLAY MODAL -->
+  <div class="modal-overlay" id="help-modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div class="modal-title">Как играть</div>
+        <button class="modal-close" id="close-help-btn" aria-label="Закрыть">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" style="width: 24px; height: 24px;">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+      <div class="instruction-section">
+        <p>Ваша цель — угадать <strong>секретное слово</strong> из 5 букв.</p>
+        <p>Изначально границы поиска заданы от <strong>ААААА</strong> (начало алфавита) до <strong>ЯЯЯЯЯ</strong> (конец алфавита).</p>
+        
+        <div class="example-box">
+          <strong>Сужение границ:</strong> Каждый раз, когда вы вводите существующее слово из словаря, игра сообщает, идет ли секретное слово до или после вашего ответа. Это слово становится новой верхней или нижней границей!
+        </div>
+
+        <p>Каждая последующая попытка должна располагаться строго <strong>между</strong> текущими верхней и нижней границами по алфавиту.</p>
+        
+        <div class="example-box" style="border-color: var(--success-color); background: rgba(16, 185, 129, 0.08);">
+          <strong>Оранжевая точка:</strong> Указывает, к какой из двух границ (верхней или нижней) в данный момент алфавитно ближе секретное слово.
+        </div>
+
+        <p>Сможете ли вы сузить диапазон и найти секретное слово менее чем за <strong>15 попыток</strong>?</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- STATISTICS / STATUS MODAL -->
+  <div class="modal-overlay" id="stats-modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div class="modal-title" id="stats-modal-title">Статистика</div>
+        <button class="modal-close" id="close-stats-btn" aria-label="Закрыть">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" style="width: 24px; height: 24px;">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+
+      <!-- Secret Word Showcase (shown only on Win/Loss) -->
+      <div class="modal-secret" id="secret-word-box" style="display: none;">
+        <div class="secret-label" id="secret-word-label">Загаданное слово</div>
+        <div class="secret-word-display" id="secret-word-text">СЛОВО</div>
+      </div>
+
+      <!-- Stats Grid -->
+      <div class="stats-grid">
+        <div class="stat-box">
+          <div class="stat-val" id="stat-played">0</div>
+          <div class="stat-lbl">Сыграно</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-val" id="stat-winpercent">0%</div>
+          <div class="stat-lbl">Победы</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-val" id="stat-streak">0</div>
+          <div class="stat-lbl">Серия</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-val" id="stat-maxstreak">0</div>
+          <div class="stat-lbl">Макс. сер.</div>
+        </div>
+      </div>
+
+      <!-- Play Again button -->
+      <button class="modal-btn" id="play-again-btn" style="margin-top: 10px;">Играть еще</button>
+    </div>
+  </div>
+
+  <!-- Load Scripts -->
+  <script src="dictionary.js"></script>
+  <script src="app.js"></script>
+  
+  <!-- Service Worker Register -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('sw.js')
+          .then(reg => console.log('ServiceWorker registered', reg))
+          .catch(err => console.log('ServiceWorker registration failed', err));
+      });
+    }
+  </script>
+</body>
+</html>
